@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400&display=swap">
-<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="styles.css?v=1.0.6">
 </head>
 <body>
 <!-- BODY-START -->
@@ -113,7 +113,7 @@
   </section>
 
   <footer class="footer">
-    <p>© <span id="year"></span> Games Over Coffee. Unpuzzling Words™. More themes brewing: Farm Animals, Outer Space, Jobs.</p>
+    <p>© <span id="year"></span> Games Over Coffee. Unpuzzling Words™. More themes brewing: Farm Animals, Outer Space, Jobs. <span class="version">v1.0.6</span></p>
   </footer>
 </div>
 
@@ -148,6 +148,10 @@
         <div class="settings">
           <label class="setting"><input type="checkbox" id="set-hints" checked> Show hints</label>
           <label class="setting"><input type="checkbox" id="set-sound" checked> Sound</label>
+          <div class="setting">
+            <button class="btn" id="btn-test-sound" type="button">Test sound</button>
+            <span class="audio-status" id="audio-status"></span>
+          </div>
         </div>
       </div>
     </div>
@@ -174,8 +178,8 @@
   </div>
 </div>
 
-<script src="themes.js"></script>
-<script src="game.js"></script>
+<script src="themes.js?v=1.0.6"></script>
+<script src="game.js?v=1.0.6"></script>
 <!-- BODY-END -->
 </body>
 </html>

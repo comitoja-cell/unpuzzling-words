@@ -431,6 +431,8 @@ kbd {
 }
 .rules { margin: 0; padding-left: 1.1em; display: grid; gap: 6px; }
 .settings { display: grid; gap: 10px; }
+.audio-status { font-size: 15px; font-style: italic; color: var(--cream-dim); }
+.version { opacity: 0.6; font-family: var(--font-display); font-size: 12px; letter-spacing: 0.08em; }
 .setting { display: flex; align-items: center; gap: 10px; }
 .setting select, .setting input { accent-color: var(--gold); }
 .setting select {

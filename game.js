@@ -486,6 +486,19 @@
   $("btn-admire").addEventListener("click", closeOverlays);
   $("btn-share").addEventListener("click", share);
   $("set-hints").addEventListener("change", (e) => { settings.hints = e.target.checked; saveSettings(); applyHints(); });
+  $("btn-test-sound").addEventListener("click", () => {
+    if (!settings.sound) { settings.sound = true; saveSettings(); applySound(); }
+    sound.confirm();
+    const status = $("audio-status");
+    const report = () => {
+      const s = sound.state();
+      status.textContent = s === "running" ? "Audio engine running. If you heard two notes, sound works."
+        : s === "suspended" ? "Audio engine is suspended by the browser. Click the board, then try again."
+        : s === "not created" ? "No audio engine yet. Click the board, then try again."
+        : "Audio unavailable in this browser (" + s + ").";
+    };
+    report(); setTimeout(report, 400);
+  });
   $("set-sound").addEventListener("change", (e) => { settings.sound = e.target.checked; saveSettings(); applySound(); if (settings.sound) sound.confirm(); });
   [$("help"), $("win")].forEach((ov) => ov.addEventListener("click", (e) => { if (e.target === ov) closeOverlays(); }));
   boardEl.addEventListener("focus", () => boardEl.classList.add("focused"));
