@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Unpuzzling Words</title>
+<meta name="description" content="Slide the tiles to spell all 13 coffee words at once. Easy to learn, hard to master. A word puzzle by Games Over Coffee.">
+<meta name="theme-color" content="#1b0d07">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400&display=swap">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<!-- BODY-START -->
+<div class="page">
+
+  <header class="masthead">
+    <div class="brand">
+      <h1 class="wordmark" aria-label="Unpuzzling Words">
+        <span class="wm-top">Unpuzzling</span>
+        <span class="wm-bottom">Words <span class="wm-theme" id="wm-theme">(Coffee)</span></span>
+      </h1>
+      <p class="byline">A word puzzle by Games Over Coffee</p>
+    </div>
+    <nav class="themes" aria-label="Themes" id="theme-nav"></nav>
+  </header>
+
+  <main class="stage">
+
+    <!-- Left ad rail (desktop only). Replace the inner placeholder with your ad network snippet. -->
+    <aside class="rail rail-left">
+      <div class="ad-slot ad-rail" data-ad="rail-left" aria-label="Advertisement">
+        <span class="ad-label">Advertisement</span>
+        <span class="ad-size">160 × 600</span>
+      </div>
+    </aside>
+
+    <section class="table" aria-label="Game">
+      <div class="hud" role="status" aria-live="polite">
+        <div class="stat"><span class="stat-label">Words</span><span class="stat-value" id="stat-words">0 / 13</span></div>
+        <div class="stat"><span class="stat-label">Moves</span><span class="stat-value" id="stat-moves">0</span></div>
+        <div class="stat"><span class="stat-label">Time</span><span class="stat-value" id="stat-time">0:00</span></div>
+        <div class="stat stat-best"><span class="stat-label">Best</span><span class="stat-value" id="stat-best">—</span></div>
+      </div>
+
+      <div class="tray">
+        <div class="tray-inner">
+          <div class="board-wrap">
+            <div class="board" id="board" tabindex="0" role="application"
+                 aria-label="Puzzle board. Arrow keys slide tiles into the highlighted empty space. Press question mark for all keys."></div>
+          </div>
+          <ul class="wordlist" id="wordlist" aria-label="Words to spell"></ul>
+        </div>
+      </div>
+
+      <div class="toolbar">
+        <button class="btn" id="btn-undo" type="button" title="Undo (Z)"><span class="key">Z</span> Undo</button>
+        <button class="btn" id="btn-hints" type="button" title="Toggle hints (L)"><span class="key">L</span> <span id="hints-label">Hints on</span></button>
+        <button class="btn" id="btn-sound" type="button" title="Toggle sound (M)"><span class="key">M</span> <span id="sound-label">Sound on</span></button>
+        <button class="btn" id="btn-new" type="button" title="New puzzle (N)"><span class="key">N</span> New puzzle</button>
+        <button class="btn btn-gold" id="btn-help" type="button" title="How to play (?)"><span class="key">?</span> Keys &amp; rules</button>
+      </div>
+      <p class="toast" id="toast" aria-live="polite"></p>
+    </section>
+
+    <aside class="rail rail-right">
+      <div class="panel keys-panel" aria-label="Keyboard reference">
+        <h2 class="panel-title">Keys</h2>
+        <dl class="keymap">
+          <div><dt><kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd></dt><dd id="keymap-arrows">Move the glowing empty space; the tile in its way slides over</dd></div>
+          <div><dt><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></dt><dd>Same as the arrows</dd></div>
+          <div><dt><kbd>Tab</kbd> / <kbd>Space</kbd></dt><dd>Jump to the next empty space</dd></div>
+          <div><dt><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd><kbd>4</kbd></dt><dd>Jump straight to that empty space</dd></div>
+          <div><dt><kbd>Z</kbd></dt><dd>Undo</dd></div>
+          <div><dt><kbd>L</kbd></dt><dd>Hints on / off</dd></div>
+          <div><dt><kbd>M</kbd></dt><dd>Sound on / off</dd></div>
+          <div><dt><kbd>N</kbd> <kbd>N</kbd></dt><dd>New puzzle (press twice)</dd></div>
+          <div><dt><kbd>?</kbd></dt><dd>Full rules &amp; settings</dd></div>
+        </dl>
+        <p class="panel-note">Mouse works too: click any tile beside an empty space to slide it.</p>
+      </div>
+      <div class="ad-slot ad-square" data-ad="square" aria-label="Advertisement">
+        <span class="ad-label">Advertisement</span>
+        <span class="ad-size">300 × 250</span>
+      </div>
+    </aside>
+  </main>
+
+  <!-- Banner under the game. On phones this collapses to 320 × 50. -->
+  <div class="ad-slot ad-banner" data-ad="banner" aria-label="Advertisement">
+    <span class="ad-label">Advertisement</span>
+    <span class="ad-size">728 × 90</span>
+  </div>
+
+  <section class="howto">
+    <h2 class="section-title">How to play</h2>
+    <div class="howto-grid">
+      <article>
+        <h3>The goal</h3>
+        <p>Spell all thirteen coffee words on the board at the same time. A word counts when its letters sit side by side in a row, reading left to right, or in a column, reading top to bottom. Words can go anywhere, cross each other, and share letters.</p>
+      </article>
+      <article>
+        <h3>The catch</h3>
+        <p>There are sixty tiles and only four empty spaces, and you can move one tile at a time. Getting three or four words is easy. Keeping them while you build the rest is the puzzle.</p>
+      </article>
+      <article>
+        <h3>Nothing locks</h3>
+        <p>A spelled word glows gold and gets checked off. Slide a letter out and it un-spells. Every arrangement that shows all thirteen words wins, so there are many solutions, and none of them are handed to you.</p>
+      </article>
+      <article>
+        <h3>Play it fast</h3>
+        <p>Steer with the arrow keys, hop between the four empty spaces with <kbd>Tab</kbd> or <kbd>1</kbd> to <kbd>4</kbd>, and undo with <kbd>Z</kbd>. Hands never leave the keyboard.</p>
+      </article>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <p>© <span id="year"></span> Games Over Coffee. Unpuzzling Words™. More themes brewing: Farm Animals, Outer Space, Jobs.</p>
+  </footer>
+</div>
+
+<!-- Help / settings overlay -->
+<div class="overlay" id="help" hidden>
+  <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="help-title">
+    <button class="dialog-close" id="help-close" type="button" aria-label="Close">×</button>
+    <h2 id="help-title" class="dialog-title">Keys &amp; rules</h2>
+    <div class="dialog-cols">
+      <div>
+        <h3>Keys</h3>
+        <dl class="keymap">
+          <div><dt><kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> or <kbd>WASD</kbd></dt><dd id="help-arrows">Move the glowing empty space. The tile in its way slides into it.</dd></div>
+          <div><dt><kbd>Tab</kbd> / <kbd>Space</kbd></dt><dd>Next empty space (<kbd>Shift</kbd>+<kbd>Tab</kbd> goes back)</dd></div>
+          <div><dt><kbd>1</kbd> – <kbd>4</kbd></dt><dd>Pick an empty space by its number</dd></div>
+          <div><dt><kbd>Z</kbd> or <kbd>Backspace</kbd></dt><dd>Undo the last move</dd></div>
+          <div><dt><kbd>L</kbd></dt><dd>Hints on / off (gold glow on spelled words)</dd></div>
+          <div><dt><kbd>M</kbd></dt><dd>Sound on / off</dd></div>
+          <div><dt><kbd>N</kbd> twice</dt><dd>New puzzle</dd></div>
+          <div><dt><kbd>?</kbd> or <kbd>Esc</kbd></dt><dd>Open / close this panel</dd></div>
+        </dl>
+      </div>
+      <div>
+        <h3>Rules</h3>
+        <ul class="rules">
+          <li>Slide one tile at a time into an empty space.</li>
+          <li>Spell every word in the list at once, left to right or top to bottom.</li>
+          <li>Words may sit anywhere and may share letters.</li>
+          <li>Nothing locks. Moving a letter out un-spells the word.</li>
+          <li>Fewer moves and a faster time make a better score.</li>
+        </ul>
+        <h3>Settings</h3>
+        <div class="settings">
+          <label class="setting">
+            <span>Arrow keys move…</span>
+            <select id="set-direction">
+              <option value="gap">the empty space</option>
+              <option value="tile">the tile</option>
+            </select>
+          </label>
+          <label class="setting"><input type="checkbox" id="set-hints" checked> Show hints</label>
+          <label class="setting"><input type="checkbox" id="set-sound" checked> Sound</label>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Win overlay -->
+<div class="overlay" id="win" hidden>
+  <canvas class="confetti" id="confetti" aria-hidden="true"></canvas>
+  <div class="dialog win-dialog" role="dialog" aria-modal="true" aria-labelledby="win-title">
+    <p class="win-eyebrow">All thirteen words</p>
+    <h2 id="win-title" class="dialog-title">Unpuzzled.</h2>
+    <div class="win-stats">
+      <div><span class="stat-label">Moves</span><span class="stat-value" id="win-moves">0</span></div>
+      <div><span class="stat-label">Time</span><span class="stat-value" id="win-time">0:00</span></div>
+      <div><span class="stat-label">Best</span><span class="stat-value" id="win-best">—</span></div>
+    </div>
+    <p class="win-note" id="win-note"></p>
+    <div class="win-actions">
+      <button class="btn btn-gold" id="btn-share" type="button">Copy result</button>
+      <button class="btn" id="btn-again" type="button"><span class="key">N</span> Play again</button>
+      <button class="btn" id="btn-admire" type="button">Admire the board</button>
+    </div>
+  </div>
+</div>
+
+<script src="themes.js"></script>
+<script src="game.js"></script>
+<!-- BODY-END -->
+</body>
+</html>
