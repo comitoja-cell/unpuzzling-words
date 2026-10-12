@@ -394,37 +394,63 @@
     })(t0);
   }
 
-  /* ---------- sound (tiny synthesized cues, no files) ---------- */
+  /* ---------- sound (tiny synthesized cues, no files) ----------
+     Browsers keep audio suspended until the page gets a real user gesture, so the engine is
+     unlocked on the first pointer/key event (capture phase, before any game handler runs).
+     Every cue waits for the context to be running, so nothing is scheduled into a dead engine. */
   const sound = (() => {
-    let ac = null;
-    const ctx = () => {
-      if (!settings.sound) return null;
-      try { ac = ac || new (window.AudioContext || window.webkitAudioContext)(); if (ac.state === "suspended") ac.resume(); return ac; }
-      catch (e) { return null; }
-    };
-    const tone = (f, t0, dur, type = "sine", gain = 0.08) => {
-      const a = ctx(); if (!a) return;
+    let ac = null, master = null;
+    function ensure() {
+      if (ac) return ac;
+      try {
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) return null;
+        ac = new AC();
+        master = ac.createGain(); master.gain.value = 0.9; master.connect(ac.destination);
+      } catch (e) { ac = null; }
+      return ac;
+    }
+    function unlock() {
+      const a = ensure(); if (!a) return;
+      if (a.state !== "running") {
+        a.resume().catch(() => {});
+        // iOS needs an actual (silent) buffer played inside the gesture
+        try { const b = a.createBuffer(1, 1, a.sampleRate), s = a.createBufferSource(); s.buffer = b; s.connect(a.destination); s.start(0); } catch (e) { /* ignore */ }
+      }
+    }
+    ["pointerdown", "keydown", "touchend"].forEach((ev) => document.addEventListener(ev, unlock, { capture: true, passive: true }));
+
+    // run fn with a live context; if the engine is still waking up, run it once it is
+    function withCtx(fn) {
+      if (!settings.sound) return;
+      const a = ensure(); if (!a) return;
+      if (a.state === "running") { fn(a); return; }
+      a.resume().then(() => { if (a.state === "running") fn(a); }).catch(() => {});
+    }
+    const tone = (a, f, t0, dur, type = "sine", gain = 0.12) => {
       const o = a.createOscillator(), g = a.createGain();
       o.type = type; o.frequency.setValueAtTime(f, t0);
-      g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(gain, t0 + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-      o.connect(g).connect(a.destination); o.start(t0); o.stop(t0 + dur + 0.02);
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.exponentialRampToValueAtTime(gain, t0 + 0.012);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+      o.connect(g).connect(master); o.start(t0); o.stop(t0 + dur + 0.03);
     };
     return {
-      slide() {
-        const a = ctx(); if (!a) return;
-        const n = a.sampleRate * 0.06, buf = a.createBuffer(1, n, a.sampleRate), d = buf.getChannelData(0);
-        for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / n, 2.5);
+      state: () => (ac ? ac.state : "not created"),
+      slide() { withCtx((a) => {
+        // a short filtered noise burst: a tile sliding on wood
+        const n = Math.floor(a.sampleRate * 0.07), buf = a.createBuffer(1, n, a.sampleRate), d = buf.getChannelData(0);
+        for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / n, 2.2);
         const src = a.createBufferSource(), bp = a.createBiquadFilter(), g = a.createGain();
-        src.buffer = buf; bp.type = "bandpass"; bp.frequency.value = 900; bp.Q.value = 0.8; g.gain.value = 0.35;
-        src.connect(bp).connect(g).connect(a.destination); src.start();
-      },
-      tick() { const a = ctx(); if (!a) return; tone(1400, a.currentTime, 0.03, "square", 0.012); },
-      thud() { const a = ctx(); if (!a) return; tone(110, a.currentTime, 0.08, "triangle", 0.05); },
-      word() { const a = ctx(); if (!a) return; const t = a.currentTime; tone(659, t, 0.18); tone(988, t + 0.09, 0.26); },
-      win() {
-        const a = ctx(); if (!a) return; const t = a.currentTime;
-        [523, 659, 784, 1047, 1319].forEach((f, i) => tone(f, t + i * 0.11, 0.45, "sine", 0.07));
-      }
+        src.buffer = buf; bp.type = "bandpass"; bp.frequency.value = 800; bp.Q.value = 0.7; g.gain.value = 0.6;
+        src.connect(bp).connect(g).connect(master); src.start();
+        tone(a, 180, a.currentTime, 0.05, "triangle", 0.08); // soft knock underneath
+      }); },
+      tick() { withCtx((a) => tone(a, 1300, a.currentTime, 0.035, "square", 0.025)); },
+      thud() { withCtx((a) => tone(a, 100, a.currentTime, 0.09, "triangle", 0.08)); },
+      word() { withCtx((a) => { const t = a.currentTime; tone(a, 659, t, 0.2, "sine", 0.14); tone(a, 988, t + 0.1, 0.3, "sine", 0.14); }); },
+      win() { withCtx((a) => { const t = a.currentTime; [523, 659, 784, 1047, 1319].forEach((f, i) => tone(a, f, t + i * 0.11, 0.5, "sine", 0.12)); }); },
+      confirm() { withCtx((a) => { const t = a.currentTime; tone(a, 784, t, 0.12, "sine", 0.12); tone(a, 1175, t + 0.08, 0.18, "sine", 0.12); }); }
     };
   })();
 
@@ -452,7 +478,7 @@
 
   $("btn-undo").addEventListener("click", () => { undo(); focusBoard(); });
   $("btn-hints").addEventListener("click", () => { settings.hints = !settings.hints; saveSettings(); applyHints(); focusBoard(); });
-  $("btn-sound").addEventListener("click", () => { settings.sound = !settings.sound; saveSettings(); applySound(); focusBoard(); });
+  $("btn-sound").addEventListener("click", () => { settings.sound = !settings.sound; saveSettings(); applySound(); if (settings.sound) sound.confirm(); focusBoard(); });
   $("btn-new").addEventListener("click", () => requestNew(false));
   $("btn-help").addEventListener("click", openHelp);
   $("help-close").addEventListener("click", closeOverlays);
@@ -460,7 +486,7 @@
   $("btn-admire").addEventListener("click", closeOverlays);
   $("btn-share").addEventListener("click", share);
   $("set-hints").addEventListener("change", (e) => { settings.hints = e.target.checked; saveSettings(); applyHints(); });
-  $("set-sound").addEventListener("change", (e) => { settings.sound = e.target.checked; saveSettings(); applySound(); });
+  $("set-sound").addEventListener("change", (e) => { settings.sound = e.target.checked; saveSettings(); applySound(); if (settings.sound) sound.confirm(); });
   [$("help"), $("win")].forEach((ov) => ov.addEventListener("click", (e) => { if (e.target === ov) closeOverlays(); }));
   boardEl.addEventListener("focus", () => boardEl.classList.add("focused"));
   boardEl.addEventListener("blur", () => boardEl.classList.remove("focused"));
@@ -506,7 +532,7 @@
       const letters = str.split("").map((ch) => (ch === "." ? null : ch));
       newGame({ theme: theme.id, letters, moves: 0, history: [], elapsed: 0, running: false, won: false });
     },
-    state: () => ({ moves, found: [...found], won, cursor: cursor ? { idx: cursor.idx, letter: cursor.letter } : null })
+    state: () => ({ moves, found: [...found], won, cursor: cursor ? { idx: cursor.idx, letter: cursor.letter } : null, audio: sound.state(), soundOn: settings.sound })
   };
 
   // Hot reload (artifact viewer only): keep the board when the page is republished.
