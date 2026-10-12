@@ -16,7 +16,7 @@ Plain HTML/CSS/JS, no build step. Open `index.html` in a browser, or host the fo
 ## Rules (as implemented)
 
 - 8×8 board, 60 letter tiles, 4 empty spaces. One tile moves at a time.
-- A word counts when it reads left→right in a row or top→bottom in a column, anywhere on the board. Words may share letters.
+- A word counts when it reads along a row or a column in any direction (left, right, up, or down), anywhere on the board. Words may share letters.
 - Any arrangement showing all 13 words wins. Nothing locks; moving a letter out un-spells the word.
 - Each game is a fresh random shuffle. With four empty spaces every arrangement is reachable, so every shuffle is solvable. A forward-only solution for the coffee tile set was verified by search.
 

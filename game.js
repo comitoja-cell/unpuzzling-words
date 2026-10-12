@@ -130,9 +130,11 @@
   }
   function scan(letters) {
     const f = new Set(), cellsLit = new Set();
+    // Words count in all four directions: each row and column is scanned forward and reversed.
     const L = lines(letters);
+    const all = L.concat(L.map((ln) => ({ s: ln.s.split("").reverse().join(""), ix: ln.ix.slice().reverse() })));
     for (const w of theme.words) {
-      for (const ln of L) {
+      for (const ln of all) {
         let p = ln.s.indexOf(w);
         while (p >= 0) {
           f.add(w);
