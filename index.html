@@ -48,17 +48,17 @@
         <div class="tray-inner">
           <div class="board-wrap">
             <div class="board" id="board" tabindex="0" role="application"
-                 aria-label="Puzzle board. Arrow keys slide tiles into the highlighted empty space. Press question mark for all keys."></div>
+                 aria-label="Puzzle board. Arrow keys move the glowing letter; press toward an empty space to slide it there. Press question mark for all keys."></div>
           </div>
           <ul class="wordlist" id="wordlist" aria-label="Words to spell"></ul>
         </div>
       </div>
 
       <div class="toolbar">
-        <button class="btn" id="btn-undo" type="button" title="Undo (Z)"><span class="key">Z</span> Undo</button>
-        <button class="btn" id="btn-hints" type="button" title="Toggle hints (L)"><span class="key">L</span> <span id="hints-label">Hints on</span></button>
-        <button class="btn" id="btn-sound" type="button" title="Toggle sound (M)"><span class="key">M</span> <span id="sound-label">Sound on</span></button>
-        <button class="btn" id="btn-new" type="button" title="New puzzle (N)"><span class="key">N</span> New puzzle</button>
+        <button class="btn" id="btn-undo" type="button" title="Undo (Backspace)"><span class="key">⌫</span> Undo</button>
+        <button class="btn" id="btn-hints" type="button" title="Toggle hints"><span id="hints-label">Hints on</span></button>
+        <button class="btn" id="btn-sound" type="button" title="Toggle sound"><span id="sound-label">Sound on</span></button>
+        <button class="btn" id="btn-new" type="button" title="New puzzle (Enter twice)"><span class="key">↵</span> New puzzle</button>
         <button class="btn btn-gold" id="btn-help" type="button" title="How to play (?)"><span class="key">?</span> Keys &amp; rules</button>
       </div>
       <p class="toast" id="toast" aria-live="polite"></p>
@@ -68,17 +68,15 @@
       <div class="panel keys-panel" aria-label="Keyboard reference">
         <h2 class="panel-title">Keys</h2>
         <dl class="keymap">
-          <div><dt><kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd></dt><dd id="keymap-arrows">Move the glowing empty space; the tile in its way slides over</dd></div>
-          <div><dt><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></dt><dd>Same as the arrows</dd></div>
-          <div><dt><kbd>Tab</kbd> / <kbd>Space</kbd></dt><dd>Jump to the next empty space</dd></div>
-          <div><dt><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd><kbd>4</kbd></dt><dd>Jump straight to that empty space</dd></div>
-          <div><dt><kbd>Z</kbd></dt><dd>Undo</dd></div>
-          <div><dt><kbd>L</kbd></dt><dd>Hints on / off</dd></div>
-          <div><dt><kbd>M</kbd></dt><dd>Sound on / off</dd></div>
-          <div><dt><kbd>N</kbd> <kbd>N</kbd></dt><dd>New puzzle (press twice)</dd></div>
+          <div><dt><kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd></dt><dd>Move the glowing letter. Press toward an empty space and the letter slides into it; otherwise the glow hops to the next letter</dd></div>
+          <div><dt><kbd>A</kbd>–<kbd>Z</kbd></dt><dd>Jump to the next tile with that letter</dd></div>
+          <div><dt><kbd>Tab</kbd></dt><dd>Jump to the next letter that can move</dd></div>
+          <div><dt><kbd>Shift</kbd>+<kbd>→</kbd></dt><dd>Hop over an empty space without moving anything</dd></div>
+          <div><dt><kbd>⌫</kbd></dt><dd>Undo</dd></div>
+          <div><dt><kbd>↵</kbd> <kbd>↵</kbd></dt><dd>New puzzle (press twice)</dd></div>
           <div><dt><kbd>?</kbd></dt><dd>Full rules &amp; settings</dd></div>
         </dl>
-        <p class="panel-note">Mouse works too: click any tile beside an empty space to slide it.</p>
+        <p class="panel-note">Mouse works too: click a tile beside an empty space to slide it, or click any tile to pick it up.</p>
       </div>
       <div class="ad-slot ad-square" data-ad="square" aria-label="Advertisement">
         <span class="ad-label">Advertisement</span>
@@ -110,7 +108,7 @@
       </article>
       <article>
         <h3>Play it fast</h3>
-        <p>Steer with the arrow keys, hop between the four empty spaces with <kbd>Tab</kbd> or <kbd>1</kbd> to <kbd>4</kbd>, and undo with <kbd>Z</kbd>. Hands never leave the keyboard.</p>
+        <p>A gold glow marks the letter you are holding. Arrow keys move it, type a letter to jump straight to it, <kbd>Tab</kbd> hops to whatever can move, and <kbd>Backspace</kbd> undoes. Hands never leave the keyboard.</p>
       </article>
     </div>
   </section>
@@ -129,13 +127,12 @@
       <div>
         <h3>Keys</h3>
         <dl class="keymap">
-          <div><dt><kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> or <kbd>WASD</kbd></dt><dd id="help-arrows">Move the glowing empty space. The tile in its way slides into it.</dd></div>
-          <div><dt><kbd>Tab</kbd> / <kbd>Space</kbd></dt><dd>Next empty space (<kbd>Shift</kbd>+<kbd>Tab</kbd> goes back)</dd></div>
-          <div><dt><kbd>1</kbd> – <kbd>4</kbd></dt><dd>Pick an empty space by its number</dd></div>
-          <div><dt><kbd>Z</kbd> or <kbd>Backspace</kbd></dt><dd>Undo the last move</dd></div>
-          <div><dt><kbd>L</kbd></dt><dd>Hints on / off (gold glow on spelled words)</dd></div>
-          <div><dt><kbd>M</kbd></dt><dd>Sound on / off</dd></div>
-          <div><dt><kbd>N</kbd> twice</dt><dd>New puzzle</dd></div>
+          <div><dt><kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd></dt><dd>Move the glowing letter. If the space in that direction is empty, the letter slides into it. If another letter is there, the glow hops onto that letter instead.</dd></div>
+          <div><dt><kbd>A</kbd>–<kbd>Z</kbd></dt><dd>Type a letter to jump to the next tile with that letter (keep pressing to cycle)</dd></div>
+          <div><dt><kbd>Tab</kbd> / <kbd>Shift</kbd>+<kbd>Tab</kbd></dt><dd>Next / previous letter that can move right now</dd></div>
+          <div><dt><kbd>Shift</kbd>+arrow</dt><dd>Hop the glow over an empty space without sliding anything</dd></div>
+          <div><dt><kbd>Backspace</kbd> or <kbd>Ctrl</kbd>+<kbd>Z</kbd></dt><dd>Undo the last move</dd></div>
+          <div><dt><kbd>Enter</kbd> twice</dt><dd>New puzzle</dd></div>
           <div><dt><kbd>?</kbd> or <kbd>Esc</kbd></dt><dd>Open / close this panel</dd></div>
         </dl>
       </div>
@@ -150,13 +147,6 @@
         </ul>
         <h3>Settings</h3>
         <div class="settings">
-          <label class="setting">
-            <span>Arrow keys move…</span>
-            <select id="set-direction">
-              <option value="gap">the empty space</option>
-              <option value="tile">the tile</option>
-            </select>
-          </label>
           <label class="setting"><input type="checkbox" id="set-hints" checked> Show hints</label>
           <label class="setting"><input type="checkbox" id="set-sound" checked> Sound</label>
         </div>

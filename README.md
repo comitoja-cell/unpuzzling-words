@@ -22,16 +22,19 @@ Plain HTML/CSS/JS, no build step. Open `index.html` in a browser, or host the fo
 
 ## Keys
 
+A gold glow marks the letter you are holding.
+
 | Key | Action |
 |---|---|
-| Arrows / WASD | Move the glowing empty space (the tile in its way slides over). Switchable to "move the tile" in settings |
-| Tab / Space | Next empty space (Shift+Tab: previous) |
-| 1–4 | Jump to that empty space |
-| Z / Backspace | Undo |
-| L | Hints on/off |
-| M | Sound on/off |
-| N N | New puzzle |
+| Arrows | Move the glow. If the next space is empty, the letter slides into it; otherwise the glow hops to the next letter |
+| A–Z | Jump to the next tile with that letter (press again to cycle) |
+| Tab / Shift+Tab | Next / previous letter that can move right now |
+| Shift+arrow | Hop over an empty space without sliding anything |
+| Backspace / Ctrl+Z | Undo |
+| Enter Enter | New puzzle |
 | ? | Keys & rules |
+
+Mouse: click a tile beside an empty space to slide it, or click any tile to pick it up.
 
 ## Adding a theme
 

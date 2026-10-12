@@ -1,8 +1,8 @@
 /* Unpuzzling Words — game logic
-   Model: an N×N board holding 60 letter tiles and 4 empty spaces ("gaps").
-   The four gaps are persistent objects (numbered 1–4) so the player can jump to them by key.
-   Every legal move is "a tile adjacent to a gap slides into it", so steering a gap with the
-   arrow keys covers every possible move with one keystroke. */
+   Model: an N×N board holding 60 letter tiles and 4 empty spaces.
+   Controls are letter-first: a cursor sits on a tile. Arrow keys move the cursor across tiles;
+   pressing toward an empty space slides the cursor's tile into it. Typing a letter jumps the
+   cursor to the next tile with that letter; Tab cycles through tiles that can move right now. */
 
 (() => {
   "use strict";
@@ -11,14 +11,11 @@
   const $ = (id) => document.getElementById(id);
   const boardEl = $("board");
   const DIRS = { up: [-1, 0], down: [1, 0], left: [0, -1], right: [0, 1] };
-  const KEY_DIRS = {
-    ArrowUp: "up", ArrowDown: "down", ArrowLeft: "left", ArrowRight: "right",
-    w: "up", s: "down", a: "left", d: "right", W: "up", S: "down", A: "left", D: "right"
-  };
+  const KEY_DIRS = { ArrowUp: "up", ArrowDown: "down", ArrowLeft: "left", ArrowRight: "right" };
 
   /* ---------- persistence (per-browser conveniences only) ---------- */
   const SETTINGS_KEY = "uw.settings";
-  const settings = Object.assign({ direction: "gap", hints: true, sound: true }, readJSON(SETTINGS_KEY) || {});
+  const settings = Object.assign({ hints: true, sound: true }, readJSON(SETTINGS_KEY) || {});
   function readJSON(key) { try { return JSON.parse(localStorage.getItem(key)); } catch (e) { return null; } }
   function writeJSON(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); } catch (e) { /* storage unavailable */ } }
   const saveSettings = () => writeJSON(SETTINGS_KEY, settings);
@@ -26,7 +23,7 @@
   const saveBest = (id, b) => writeJSON("uw.best." + id, b);
 
   /* ---------- state ---------- */
-  let theme, N, tiles, gaps, tileAt, gapAt, activeGap;
+  let theme, N, tiles, gaps, tileAt, gapAt, cursor;
   let moves, history, startedAt, elapsed, timerId, won, found, foundCells;
   let pendingNew = 0, toastTimer = 0;
 
@@ -66,13 +63,12 @@
     boardEl.innerHTML = "";
     boardEl.style.setProperty("--n", N);
 
-    let gapNo = 0;
     letters.forEach((ch, idx) => {
       if (ch === null) {
-        const gap = { id: ++gapNo, idx, el: document.createElement("div") };
+        const gap = { idx, el: document.createElement("div") };
         gap.el.className = "cell gap";
-        gap.el.innerHTML = `<div class="well">${gap.id}</div>`;
-        gap.el.addEventListener("click", () => { setActive(gap); focusBoard(); });
+        gap.el.innerHTML = `<div class="well"></div>`;
+        gap.el.addEventListener("click", () => onGapClick(gap));
         gaps.push(gap); gapAt[idx] = gap; boardEl.appendChild(gap.el);
       } else {
         const tile = { id: tiles.length, letter: ch, idx, el: document.createElement("div") };
@@ -82,13 +78,9 @@
         tiles.push(tile); tileAt[idx] = tile; boardEl.appendChild(tile.el);
       }
     });
-    if (restore && restore.gapIdx) {
-      // keep gap numbering stable across a hot reload
-      gaps.forEach((g, i) => { g.idx = restore.gapIdx[i]; gapAt[g.idx] = g; });
-    }
 
     moves = restore ? restore.moves : 0;
-    history = restore ? restore.history : [];
+    history = []; // undo history does not survive a reload (tile ids are reassigned)
     elapsed = restore ? restore.elapsed : 0;
     startedAt = restore && restore.running ? Date.now() - elapsed : 0;
     won = restore ? restore.won : false;
@@ -96,7 +88,9 @@
     if (startedAt) timerId = setInterval(tick, 250);
 
     tiles.forEach(place); gaps.forEach(place);
-    setActive(gaps[restore ? restore.active : 0]);
+    cursor = null;
+    const startTile = (restore && restore.cursor != null && tileAt[restore.cursor]) || movableTiles()[0] || tiles[0];
+    setCursor(startTile);
     buildWordList();
     renderBest();
     update();
@@ -152,68 +146,106 @@
   function countWords(letters) { return scan(letters).found.size; }
   const currentLetters = () => tileAt.map((t) => (t ? t.letter : null));
 
-  /* ---------- moves ---------- */
-  function setActive(gap) {
-    if (activeGap) activeGap.el.classList.remove("active");
-    activeGap = gap;
-    gap.el.classList.add("active");
+  /* ---------- neighbors ---------- */
+  function neighborGaps(tile) {
+    const [r, c] = rc(tile.idx), out = [];
+    for (const [dr, dc] of Object.values(DIRS)) {
+      if (inBounds(r + dr, c + dc)) { const g = gapAt[idxOf(r + dr, c + dc)]; if (g) out.push(g); }
+    }
+    return out;
+  }
+  const movableTiles = () => tiles.filter((t) => neighborGaps(t).length).sort((a, b) => a.idx - b.idx);
+
+  /* ---------- cursor ---------- */
+  function setCursor(tile) {
+    if (!tile) return;
+    if (cursor) cursor.el.classList.remove("cursor");
+    cursor = tile;
+    cursor.el.classList.add("cursor");
+    markTargets();
+  }
+  function markTargets() {
+    const targets = cursor ? neighborGaps(cursor) : [];
+    gaps.forEach((g) => g.el.classList.toggle("target", targets.includes(g)));
   }
 
-  function tryMove(dir) {
+  /* Arrow: slide the cursor's tile if that way is empty, otherwise walk the cursor to the next tile. */
+  function arrow(dir, walkOnly) {
     const [dr, dc] = DIRS[dir];
-    const sign = settings.direction === "gap" ? 1 : -1;
-    const [r, c] = rc(activeGap.idx);
-    const tr = r + dr * sign, tc = c + dc * sign;
-    const target = inBounds(tr, tc) ? tileAt[idxOf(tr, tc)] : null;
-    if (!target) { bump(activeGap.el, dr * sign, dc * sign); return false; }
-    slide(target, activeGap);
-    return true;
+    let [r, c] = rc(cursor.idx);
+    r += dr; c += dc;
+    if (!inBounds(r, c)) { bump(cursor.el, dr, dc); return; }
+    const gap = gapAt[idxOf(r, c)];
+    if (gap && !walkOnly) { slide(cursor, gap); return; }
+    // walk: skip over empty cells until a tile is found
+    while (inBounds(r, c)) {
+      const t = tileAt[idxOf(r, c)];
+      if (t) { setCursor(t); sound.tick(); return; }
+      r += dr; c += dc;
+    }
+    bump(cursor.el, dr, dc);
   }
 
+  /* Tab: next tile that can move right now, in reading order. */
+  function cycleMovable(step) {
+    const list = movableTiles();
+    if (!list.length) return;
+    let i = list.indexOf(cursor);
+    if (i < 0) { i = list.findIndex((t) => t.idx > cursor.idx); if (i < 0) i = 0; if (step < 0) i -= 1; }
+    else i += step;
+    setCursor(list[(i + list.length) % list.length]);
+    sound.tick();
+  }
+
+  /* Letter key: next tile with that letter after the cursor, wrapping. */
+  function jumpToLetter(ch) {
+    const list = tiles.filter((t) => t.letter === ch).sort((a, b) => a.idx - b.idx);
+    if (!list.length) { bump(cursor.el, 0, 0); return; }
+    const next = list.find((t) => t.idx > cursor.idx) || list[0];
+    setCursor(next);
+    sound.tick();
+  }
+
+  /* ---------- moves ---------- */
   function slide(tile, gap) {
-    const from = gap.idx, to = tile.idx;
-    tileAt[from] = tile; tileAt[to] = null;
-    gapAt[to] = gap; gapAt[from] = null;
-    tile.idx = from; gap.idx = to;
+    const from = tile.idx, to = gap.idx;
+    tileAt[to] = tile; tileAt[from] = null;
+    gapAt[from] = gap; gapAt[to] = null;
+    tile.idx = to; gap.idx = from;
     place(tile); place(gap);
-    history.push({ g: gap.id, from, to });
+    history.push({ t: tile.id, from, to });
     moves++;
     if (!startedAt && !won) { startedAt = Date.now(); timerId = setInterval(tick, 250); }
     sound.slide();
+    setCursor(tile);
     update();
   }
 
   function undo() {
     const m = history.pop();
     if (!m) { toast("Nothing to undo"); return; }
-    const gap = gaps[m.g - 1];
-    const tile = tileAt[m.from];
-    tileAt[m.to] = tile; tileAt[m.from] = null;
-    gapAt[m.from] = gap; gapAt[m.to] = null;
-    tile.idx = m.to; gap.idx = m.from;
+    const tile = tiles[m.t];
+    const gap = gapAt[m.from];
+    tileAt[m.from] = tile; tileAt[m.to] = null;
+    gapAt[m.to] = gap; gapAt[m.from] = null;
+    tile.idx = m.from; gap.idx = m.to;
     place(tile); place(gap);
     moves = Math.max(0, moves - 1);
-    setActive(gap);
     sound.slide();
+    setCursor(tile);
     update();
   }
 
   function onTileClick(tile) {
-    const [r, c] = rc(tile.idx);
-    const adjacent = [];
-    for (const [dr, dc] of Object.values(DIRS)) {
-      if (inBounds(r + dr, c + dc)) { const g = gapAt[idxOf(r + dr, c + dc)]; if (g) adjacent.push(g); }
-    }
-    if (!adjacent.length) { bump(tile.el, 0, 0); focusBoard(); return; }
-    const gap = adjacent.includes(activeGap) ? activeGap : adjacent[0];
-    setActive(gap);
-    slide(tile, gap);
+    const adjacent = neighborGaps(tile);
+    if (!adjacent.length) { setCursor(tile); focusBoard(); return; }
+    slide(tile, adjacent[0]);
     focusBoard();
   }
-
-  function cycleGap(step) {
-    const i = gaps.indexOf(activeGap);
-    setActive(gaps[(i + step + gaps.length) % gaps.length]);
+  function onGapClick(gap) {
+    // Clicking an empty space next to the cursor's tile slides the tile there.
+    if (cursor && neighborGaps(cursor).includes(gap)) slide(cursor, gap);
+    focusBoard();
   }
 
   function bump(el, dr, dc) {
@@ -232,13 +264,9 @@
 
     tiles.forEach((t) => {
       t.el.classList.toggle("lit", foundCells.has(t.idx));
-      const [r, c] = rc(t.idx);
-      let movable = false;
-      for (const [dr, dc] of Object.values(DIRS)) {
-        if (inBounds(r + dr, c + dc) && gapAt[idxOf(r + dr, c + dc)]) { movable = true; break; }
-      }
-      t.el.classList.toggle("movable", movable);
+      t.el.classList.toggle("movable", neighborGaps(t).length > 0);
     });
+    markTargets();
     $("wordlist").querySelectorAll("li").forEach((li) => li.classList.toggle("done", found.has(li.dataset.word)));
     $("stat-words").textContent = `${found.size} / ${theme.words.length}`;
     $("stat-moves").textContent = moves;
@@ -308,8 +336,7 @@
   function confetti() {
     const cv = $("confetti");
     const ctx = cv.getContext("2d");
-    const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (reduce) return;
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     const W = cv.width = cv.offsetWidth, H = cv.height = cv.offsetHeight;
     const colors = ["#f1c75b", "#fff0c2", "#b8860b", "#efe2cc", "#8a5a0a"];
     const ps = Array.from({ length: 170 }, () => ({
@@ -358,6 +385,7 @@
         src.buffer = buf; bp.type = "bandpass"; bp.frequency.value = 900; bp.Q.value = 0.8; g.gain.value = 0.35;
         src.connect(bp).connect(g).connect(a.destination); src.start();
       },
+      tick() { const a = ctx(); if (!a) return; tone(1400, a.currentTime, 0.03, "square", 0.012); },
       thud() { const a = ctx(); if (!a) return; tone(110, a.currentTime, 0.08, "triangle", 0.05); },
       word() { const a = ctx(); if (!a) return; const t = a.currentTime; tone(659, t, 0.18); tone(988, t + 0.09, 0.26); },
       win() {
@@ -373,7 +401,7 @@
     const now = Date.now();
     if (now - pendingNew < 2500) { pendingNew = 0; $("win").hidden = true; newGame(); toast("New puzzle. Good luck."); focusBoard(); return; }
     pendingNew = now;
-    toast(viaKey ? "Press N again to start a new puzzle" : "Click again to start a new puzzle");
+    toast(viaKey ? "Press Enter again to start a new puzzle" : "Click again to start a new puzzle");
   }
   function applyHints() {
     document.body.classList.toggle("hints", settings.hints);
@@ -385,15 +413,6 @@
     $("sound-label").textContent = settings.sound ? "Sound on" : "Sound off";
     $("btn-sound").classList.toggle("on", settings.sound);
     $("set-sound").checked = settings.sound;
-  }
-  function applyDirection() {
-    const gapMode = settings.direction === "gap";
-    const txt = gapMode
-      ? "Move the glowing empty space; the tile in its way slides over"
-      : "Slide the tile next to the glowing empty space in that direction";
-    $("keymap-arrows").textContent = txt;
-    $("help-arrows").textContent = txt;
-    $("set-direction").value = settings.direction;
   }
   function openHelp() { $("help").hidden = false; $("help-close").focus(); }
   function closeOverlays() { $("help").hidden = true; $("win").hidden = true; focusBoard(); }
@@ -407,7 +426,6 @@
   $("btn-again").addEventListener("click", () => { pendingNew = Date.now(); requestNew(false); });
   $("btn-admire").addEventListener("click", closeOverlays);
   $("btn-share").addEventListener("click", share);
-  $("set-direction").addEventListener("change", (e) => { settings.direction = e.target.value; saveSettings(); applyDirection(); });
   $("set-hints").addEventListener("change", (e) => { settings.hints = e.target.checked; saveSettings(); applyHints(); });
   $("set-sound").addEventListener("change", (e) => { settings.sound = e.target.checked; saveSettings(); applySound(); });
   [$("help"), $("win")].forEach((ov) => ov.addEventListener("click", (e) => { if (e.target === ov) closeOverlays(); }));
@@ -420,30 +438,22 @@
     const helpOpen = !$("help").hidden, winOpen = !$("win").hidden;
 
     if (e.key === "Escape") { if (helpOpen || winOpen) closeOverlays(); else if (pendingNew) { pendingNew = 0; toast(""); } return; }
-    if (e.key === "?" || (e.key === "/" && e.shiftKey)) { e.preventDefault(); helpOpen ? closeOverlays() : openHelp(); return; }
-    if (typing || e.metaKey || e.ctrlKey || e.altKey) {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "z" && !typing && !helpOpen) { e.preventDefault(); undo(); }
-      return;
-    }
+    if (e.key === "?" || e.key === "F1") { e.preventDefault(); helpOpen ? closeOverlays() : openHelp(); return; }
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "z" && !typing && !helpOpen && !winOpen) { e.preventDefault(); undo(); return; }
+    if (typing || e.metaKey || e.ctrlKey || e.altKey) return;
     if (helpOpen) return;
     if (winOpen) {
-      if (e.key.toLowerCase() === "n" || e.key === "Enter") { e.preventDefault(); pendingNew = Date.now(); requestNew(true); }
+      if (e.key === "Enter") { e.preventDefault(); pendingNew = Date.now(); requestNew(true); }
       return;
     }
 
     const onBoard = e.target === document.body || e.target === boardEl || e.target === document.documentElement;
     const dir = KEY_DIRS[e.key];
-    if (dir) { e.preventDefault(); tryMove(dir); return; }
-    if (e.key === "Tab" && onBoard) { e.preventDefault(); cycleGap(e.shiftKey ? -1 : 1); sound.thud(); return; }
-    if (e.key === " " && onBoard) { e.preventDefault(); cycleGap(1); sound.thud(); return; }
-    if (/^[1-9]$/.test(e.key)) { const g = gaps[Number(e.key) - 1]; if (g) { setActive(g); sound.thud(); } return; }
-    switch (e.key.toLowerCase()) {
-      case "z": case "backspace": e.preventDefault(); undo(); break;
-      case "l": settings.hints = !settings.hints; saveSettings(); applyHints(); toast(settings.hints ? "Hints on" : "Hints off: spelled words no longer glow"); break;
-      case "m": settings.sound = !settings.sound; saveSettings(); applySound(); toast(settings.sound ? "Sound on" : "Sound off"); break;
-      case "n": requestNew(true); break;
-      case "h": openHelp(); break;
-    }
+    if (dir) { e.preventDefault(); arrow(dir, e.shiftKey); return; }
+    if (e.key === "Tab" && onBoard) { e.preventDefault(); cycleMovable(e.shiftKey ? -1 : 1); return; }
+    if (e.key === "Backspace") { e.preventDefault(); undo(); return; }
+    if (e.key === "Enter" && onBoard) { e.preventDefault(); requestNew(true); return; }
+    if (/^[a-zA-Z]$/.test(e.key)) { e.preventDefault(); jumpToLetter(e.key.toUpperCase()); return; }
   });
 
   // Theme chips
@@ -457,25 +467,25 @@
   });
   $("year").textContent = new Date().getFullYear();
 
-  // Hot reload (artifact viewer only): keep the board when the page is republished.
-  const snapshot = () => ({
-    theme: theme.id, letters: currentLetters(), gapIdx: gaps.map((g) => g.idx), active: gaps.indexOf(activeGap),
-    moves, history, elapsed: startedAt ? Date.now() - startedAt : elapsed, running: !!startedAt && !won, won
-  });
-  const start = (data) => {
-    applyHints(); applySound(); applyDirection();
-    if (data && data.letters && data.letters.length === 64) newGame(data); else newGame();
-    focusBoard();
-  };
   // Debug/test hook: load a specific layout (64 chars, "." = empty). Used by automated tests.
   window.UW_DEBUG = {
     load(str) {
       const letters = str.split("").map((ch) => (ch === "." ? null : ch));
-      newGame({ theme: theme.id, letters, moves: 0, history: [], elapsed: 0, running: false, won: false, active: 0 });
+      newGame({ theme: theme.id, letters, moves: 0, history: [], elapsed: 0, running: false, won: false });
     },
-    state: () => ({ moves, found: [...found], won })
+    state: () => ({ moves, found: [...found], won, cursor: cursor ? { idx: cursor.idx, letter: cursor.letter } : null })
   };
 
+  // Hot reload (artifact viewer only): keep the board when the page is republished.
+  const snapshot = () => ({
+    theme: theme.id, letters: currentLetters(), cursor: cursor ? cursor.idx : null,
+    moves, history, elapsed: startedAt ? Date.now() - startedAt : elapsed, running: !!startedAt && !won, won
+  });
+  const start = (data) => {
+    applyHints(); applySound();
+    if (data && data.letters && data.letters.length === 64) newGame(data); else newGame();
+    focusBoard();
+  };
   const hot = window.claude && window.claude.hot;
   if (hot && hot.snapshot) hot.snapshot(snapshot);
   if (hot && hot.ready) hot.ready(start); else start((hot && hot.data) || null);
