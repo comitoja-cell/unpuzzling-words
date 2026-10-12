@@ -87,13 +87,6 @@ kbd {
 }
 .wm-top { font-size: clamp(22px, 3.2vw, 34px); font-weight: 700; letter-spacing: 0.06em; }
 .wm-bottom { font-size: clamp(34px, 5.2vw, 56px); }
-.wm-theme { font-weight: 400; font-size: 0.56em; letter-spacing: 0.08em; vertical-align: 0.14em; }
-.byline {
-  margin: 10px 0 0;
-  color: var(--cream-dim);
-  font-style: italic;
-  font-size: 17px;
-}
 .themes { display: flex; flex-wrap: wrap; gap: 8px; }
 .chip {
   font-family: var(--font-display);
@@ -150,6 +143,17 @@ kbd {
   min-width: 3ch;
   text-align: center;
 }
+
+/* paused timer */
+.stat.paused .stat-label { color: var(--gold); font-weight: 600; }
+.stat.paused .stat-label::before {
+  content: ""; display: inline-block; width: 0.5em; height: 0.5em; margin-right: 0.45em;
+  border-radius: 50%; background: var(--gold); vertical-align: 0.05em;
+  animation: blink 1.2s ease-in-out infinite;
+}
+.stat.paused .stat-value { color: var(--cream-dim); }
+@keyframes blink { 50% { opacity: 0.25; } }
+.board.paused .tile .face { filter: saturate(0.6) brightness(0.9); }
 
 /* ---------- tray ---------- */
 .tray {

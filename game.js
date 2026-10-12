@@ -26,6 +26,8 @@
   let theme, N, tiles, gaps, tileAt, gapAt, cursor;
   let moves, history, startedAt, elapsed, timerId, won, found, foundCells;
   let pendingNew = 0, toastTimer = 0;
+  let lastMoveAt = 0, paused = false;
+  const IDLE_MS = 30000; // timer pauses after this long without a move
 
   const rc = (idx) => [Math.floor(idx / N), idx % N];
   const idxOf = (r, c) => r * N + c;
@@ -85,6 +87,7 @@
     startedAt = restore && restore.running ? Date.now() - elapsed : 0;
     won = restore ? restore.won : false;
     clearInterval(timerId); timerId = 0;
+    paused = false; lastMoveAt = Date.now(); setPausedUI(false);
     if (startedAt) timerId = setInterval(tick, 250);
 
     tiles.forEach(place); gaps.forEach(place);
@@ -95,7 +98,6 @@
     renderBest();
     update();
     renderTime();
-    $("wm-theme").textContent = `(${theme.name})`;
   }
 
   function place(obj) {
@@ -217,7 +219,7 @@
     place(tile); place(gap);
     history.push({ t: tile.id, from, to });
     moves++;
-    if (!startedAt && !won) { startedAt = Date.now(); timerId = setInterval(tick, 250); }
+    noteMove();
     sound.slide();
     setCursor(tile);
     update();
@@ -233,6 +235,7 @@
     tile.idx = m.from; gap.idx = m.to;
     place(tile); place(gap);
     moves = Math.max(0, moves - 1);
+    noteMove();
     sound.slide();
     setCursor(tile);
     update();
@@ -281,7 +284,34 @@
     if (!won && found.size === theme.words.length) win();
   }
 
-  function tick() { elapsed = Date.now() - startedAt; renderTime(); }
+  /* Timer: starts on the first move, pauses after IDLE_MS without a move, resumes on the next move.
+     Idle time beyond the 30-second grace period does not count. */
+  function noteMove() {
+    const now = Date.now();
+    if (won) return;
+    if (!startedAt) { startedAt = now; timerId = setInterval(tick, 250); }
+    else if (paused) { paused = false; startedAt = now - elapsed; setPausedUI(false); }
+    lastMoveAt = now;
+  }
+  function tick() {
+    if (!startedAt || paused) return;
+    const now = Date.now();
+    if (now - lastMoveAt > IDLE_MS) {
+      paused = true;
+      elapsed = lastMoveAt + IDLE_MS - startedAt;
+      renderTime();
+      setPausedUI(true);
+      toast("Timer paused. It picks back up on your next move.", 3500);
+      return;
+    }
+    elapsed = now - startedAt;
+    renderTime();
+  }
+  function setPausedUI(on) {
+    $("stat-time-wrap").classList.toggle("paused", on);
+    $("stat-time-label").textContent = on ? "Paused" : "Time";
+    boardEl.classList.toggle("paused", on);
+  }
   const fmt = (ms) => { const s = Math.floor(ms / 1000); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; };
   function renderTime() { $("stat-time").textContent = fmt(elapsed); }
   function renderBest() {
@@ -299,7 +329,8 @@
   function win() {
     won = true;
     clearInterval(timerId); timerId = 0;
-    if (startedAt) elapsed = Date.now() - startedAt;
+    if (startedAt && !paused) elapsed = Date.now() - startedAt;
+    paused = false; setPausedUI(false);
     renderTime();
     const b = bestFor(theme.id);
     const notes = [];
